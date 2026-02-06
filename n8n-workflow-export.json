@@ -1,0 +1,330 @@
+{
+  "name": "Fruits - Complete (Replicate + Telegram)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 12
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [-400, 200],
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger (12h)"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Please give me a new prompt every time",
+        "options": {
+          "systemMessage": "=You are an expert text-to-video prompt engineer specializing in YouTube Shorts automation and educational viral health content. You must generate ONE single, ready-to-use text-to-video prompt. FOOD SELECTION (MANDATORY) You must intelligently and randomly select ONE common food yourself. Random selection must vary between generations. Prefer foods that are: Widely known Easily recognizable Either clearly healthy or clearly unhealthy FOOD LOGIC (MANDATORY) If the selected food is healthy (fruit, vegetable, natural food): → Show its real biological benefit on the human body. If the selected food is unhealthy (junk, fried, sugary, processed): → Clearly show its negative effect and physical damage to the human body. VIDEO LENGTH (STRICT) Video must be ideal for YouTube Shorts Target duration: 6–10 seconds Scene pacing must feel fast, clear, and loop-friendly VISUAL REQUIREMENTS (STRICT) The food must be fully anthropomorphic: Human eyes Human lips (accurate Hindi lip-sync) Hands and legs Expressive face Healthy food → bright, fresh, attractive Unhealthy food → dull, greasy, dark Style: High-quality 3D medical + Pixar-style animation Cinematic lighting Vertical 9:16 format No on-screen text No watermark SCENE RULES (NON-NEGOTIABLE) Scene must be inside the human body Show the exact organ or system affected (heart, stomach, brain, liver, blood vessels, lungs, etc.) Environment must look like a realistic medical interior Camera must remain 100% static No pan No zoom No tilt No shake ACTION & TOOL SELECTION (AUTOMATIC) You must intelligently decide: The real problem (benefit or damage) The correct biological action The correct tool/prop, such as: Cleaning → brush / wiper Removing → vacuum Protecting → shield Strengthening → glow / support Breaking → hammer Damaging → cracks / fire / dark smoke The food must physically use the tool with its hands. If something is being cleaned or removed, it MUST: Visibly break apart Completely disappear during the animation DIALOGUE RULE (ABSOLUTE) Include ONLY ONE spoken line, first-person Hindi, short and clear, in this exact format: \"Main [FOOD NAME] hoon, main aapka [PROBLEM] [ACTION] karta hoon.\" If the food is unhealthy, the line must clearly state harm or damage OUTPUT RULES (VERY STRICT) Output ONLY the final paste-ready text-to-video prompt Do NOT add explanations Do NOT add titles, headings, bullet points, or labels Do NOT mention rules or logic The output must be ready to paste directly into a video generation AI One generation = one complete Shorts-ready prompt"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [-200, 200],
+      "id": "ai-agent",
+      "name": "AI Agent (Food Prompt)"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [-200, 400],
+      "id": "gemini-chat",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "J3j486aiup7uXj8T",
+          "name": "Google Gemini(PaLM) Api account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Based on this prompt {{ $json.output }} Give me a very short Youtube video title under 20 characters And after the title compulsory add #viralshort #shorts #Viral #short #indianviralshort Including all the hashtags given don't let the title exceed 99 characters"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [0, 200],
+      "id": "generate-title",
+      "name": "Generate Title + Hashtags",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "J3j486aiup7uXj8T",
+          "name": "Google Gemini(PaLM) Api account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.replicate.com/v1/predictions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "wait"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "version",
+              "value": "3f0457e4619daac51203dedb472816fd4af51f3149fa7a9e0b5ffcf1b8172438"
+            },
+            {
+              "name": "input",
+              "value": "={{ {prompt: $('AI Agent (Food Prompt)').item.json.output, num_frames: 24} }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [200, 200],
+      "id": "replicate-create",
+      "name": "Replicate - Create Video",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_HEADER_AUTH_CRED_ID",
+          "name": "Replicate Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 15,
+        "unit": "seconds"
+      },
+      "id": "wait-initial",
+      "name": "Wait 15s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.2,
+      "position": [400, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.replicate.com/v1/predictions/{{ $json.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "check-status",
+      "name": "Check Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [600, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_HEADER_AUTH_CRED_ID",
+          "name": "Replicate Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "is-succeeded",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "succeeded",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "is-done",
+      "name": "Video Ready?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [800, 200]
+    },
+    {
+      "parameters": {
+        "amount": 20,
+        "unit": "seconds"
+      },
+      "id": "wait-loop",
+      "name": "Wait 20s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.2,
+      "position": [800, 350]
+    },
+    {
+      "parameters": {
+        "chatId": "=YOUR_TELEGRAM_CHAT_ID",
+        "text": "=🍎 **New Food Facts Video!** {{ $('Generate Title + Hashtags').item.json.content.parts[0].text }} 🎥 [Watch Here]({{ $json.output }}) _Prompt: {{ $('AI Agent (Food Prompt)').item.json.output.substring(0, 200) }}..._",
+        "parseMode": "markdown"
+      },
+      "id": "send-telegram",
+      "name": "Send to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1000, 200],
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAM_CRED_ID",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger (12h)": {
+      "main": [
+        [
+          {
+            "node": "AI Agent (Food Prompt)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent (Food Prompt)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent (Food Prompt)": {
+      "main": [
+        [
+          {
+            "node": "Generate Title + Hashtags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Title + Hashtags": {
+      "main": [
+        [
+          {
+            "node": "Replicate - Create Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Replicate - Create Video": {
+      "main": [
+        [
+          {
+            "node": "Wait 15s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 15s": {
+      "main": [
+        [
+          {
+            "node": "Check Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Status": {
+      "main": [
+        [
+          {
+            "node": "Video Ready?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Video Ready?": {
+      "main": [
+        [
+          {
+            "node": "Send to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 20s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 20s": {
+      "main": [
+        [
+          {
+            "node": "Check Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-02-04T16:34:00.000Z",
+  "versionId": "1"
+}
