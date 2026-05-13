@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  # ── FastAPI Backend ──────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: auraloom-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/database:/app/database
+    environment:
+      - DATABASE_URL=sqlite:///./database/canvas.db
+    restart: unless-stopped
+
+  # ── React Frontend (served via Nginx) ────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: auraloom-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
